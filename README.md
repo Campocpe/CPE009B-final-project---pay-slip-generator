@@ -6,37 +6,36 @@
 
 </div>
 
-## Team🧑‍💻
+## The Team🧑‍💻
 
 <div align="center">
 
 <table>
   <tr>
     <td align="center">
-      <img src="https://github.com/Campocpe.png" width="100px" alt=""/><br />
-      <b>Campo, Ramon Brendt </b><br />
+      <img src="https://github.com/Campocpe.png" width="100px" alt="Campo, Ramon Brendt"/><br />
+      <b>Campo, Ramon Brendt</b><br />
+      <a href="https://github.com/Campocpe">GitHub</a>
+    </td>
+    <td align="center">
+      <img src="https://github.com/username1.png" width="100px" alt="Galvez, Nichollo"/><br />
+      <b>Galvez, Nichollo</b><br />
       <a href="">GitHub</a>
     </td>
     <td align="center">
-      <img src="https://github.com/Maurocpe.png" width="100px" alt=""/><br />
-      <b>Galvez, Nichollo </b><br />
-      <a href="https://github.com/Maurocpe">GitHub</a>
-    </td>
-    <td align="center">
-      <img src="https://github.com/NatMendoza.png" width="100px" alt=""/><br />
+      <img src="https://github.com/Pilapilcpe.png" width="100px" alt="Pilapil, Loreen Jae"/><br />
       <b>Pilapil, Loreen Jae</b><br />
-      <a href="https://github.com/NatMendoza">GitHub</a>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="https://github.com/Pilapilcpe.png" width="100px" alt=""/><br />
-      <b>Tasic, Kenneth Bryan</b><br />
       <a href="https://github.com/Pilapilcpe">GitHub</a>
     </td>
     <td align="center">
+      <img src="https://github.com/KTasic.png" width="100px" alt="Tasic, Kenneth Bryan"/><br />
+      <b>Tasic, Kenneth Bryan</b><br />
+      <a href="https://github.com/KTasic">GitHub</a>
     </td>
+  </tr>
 </table>
+
+</div>
 
 </div>
 
