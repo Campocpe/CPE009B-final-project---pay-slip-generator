@@ -1,8 +1,8 @@
-# **PAYSLIP GENERATOR**
+
 
 <div align="center">
 
-<img src="https://i.imgur.com/E4jgR4N.gif" width="700"/>
+<img width="900" height="260" alt="payslip_generator" src="https://github.com/user-attachments/assets/8ca64089-5279-45fe-bae0-55449f6cc2ae" />
 
 </div>
 
@@ -13,7 +13,7 @@
 <table>
   <tr>
     <td align="center">
-      <img src="https://github.com/username1.png" width="100px" alt=""/><br />
+      <img src="https://github.com/Campocpe.png" width="100px" alt=""/><br />
       <b>Campo, Ramon Brendt </b><br />
       <a href="">GitHub</a>
     </td>
