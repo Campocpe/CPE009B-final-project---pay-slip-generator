@@ -17,7 +17,8 @@ from PyQt6.QtWidgets import (
     QScrollArea,
     QStackedWidget,
     QVBoxLayout,
-    QWidget,
+    QWidget, QFileDialog,
+    QMessageBox
 )
 
 try:
@@ -270,7 +271,8 @@ class Main(QWidget):
 
         back_btn = QPushButton("Back")
         back_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
-        save_btn = QPushButton("Save Payslip")   # not connected to anything yet
+        save_btn = QPushButton("Save Payslip") 
+        save_btn.clicked.connect(self.save_payslip)
 
         btns = QHBoxLayout()
         btns.addStretch()
@@ -369,8 +371,8 @@ class Main(QWidget):
 
     def build_payslip(self):
         # Put your widgets inside this layout
-        content = QWidget()
-        content_layout = QVBoxLayout(content)
+        self.payslip_widget = QWidget()
+        content_layout = QVBoxLayout(self.payslip_widget)
 
         # ============================================================
         # HEADER
@@ -586,12 +588,14 @@ class Main(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setMinimumSize(600, 300)
-        scroll.setWidget(content)
+        scroll.setWidget(self.payslip_widget)
 
         self.recalculate()
         return scroll
 
     def recalculate(self):
+        if not hasattr(self, "inputs") or not self.inputs:
+            return
         # ============================================================
         # TEXT FIELDS
         # ============================================================
@@ -679,6 +683,23 @@ class Main(QWidget):
         self.gross_pay_lbl.setText(f"{res['gross_pay']:,.2f}")
         self.total_deductions_lbl.setText(f"{res['total_deductions']:,.2f}")
         self.net_amount_lbl.setText(f"{res['net_pay']:,.2f}")
+        # ============================================================
+        # SAVE PAYSLIP 
+        # ============================================================
+    def save_payslip(self):
+        if not hasattr(self, "payslip_widget") or self.payslip_widget is None:
+            return
+
+        file_path, _ = QFileDialog.getSaveFileName(self,"Save Payslip","payslip.png",
+            "PNG Image (*.png);;JPEG Image (*.jpg *.jpeg)",)
+        if not file_path:
+            return
+
+        pixmap = self.payslip_widget.grab()
+        if pixmap.save(file_path):
+            QMessageBox.information(self, "Success", f"Payslip successfully saved to:\n{file_path}")
+        else:
+            QMessageBox.critical(self, "Error", "Failed to save payslip image file.")
 
 
 if __name__ == '__main__':
