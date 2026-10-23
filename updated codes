@@ -238,7 +238,16 @@ class Main(QWidget):
         font.setPointSize(60)
         font.setBold(True)
         self.title.setFont(font)
-        self.title.setContentsMargins(0,130,0,200)
+        self.title.setContentsMargins(0,130,0,0)
+
+        #subtitle
+        self.subtitle = QLabel("PAYSLIP GENERATOR")
+        sub_font = QFont()
+        sub_font.setFamily("Arial")
+        sub_font.setPointSize(20)
+        sub_font.setBold(True)
+        self.subtitle.setFont(sub_font)
+        self.subtitle.setContentsMargins(0, 10, 0, 200)
 
         #start
         self.startbtn = QPushButton("OPEN EDITOR")
@@ -266,6 +275,7 @@ class Main(QWidget):
         MainLayout.setSpacing(10)  # space between every widget
         MainLayout.setContentsMargins(0, 0, 0, 0)
         MainLayout.addWidget(self.title, alignment=Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
+        MainLayout.addWidget(self.subtitle, alignment=Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
         MainLayout.addLayout(ButtonLayout)
 
 
@@ -317,14 +327,15 @@ class Main(QWidget):
         # ============================================================
         # EMPLOYEE INPUTS
         # ============================================================
-
+        # drowpdown for employee selection
         emp_box = QGroupBox("Employee")
         emp = QFormLayout(emp_box)
         
         self.employee_dropdown= QComboBox()
         self.employee_dropdown.addItems(employees.keys())
         emp.addRow("Select Employee", self.employee_dropdown)
-        
+
+        # text field that automatically fills in employee information based on selection
         for label in ["Pay period", "Employee no.", "Department", "Position"]:
             field = QLineEdit()
             emp.addRow(label, field)
@@ -336,8 +347,11 @@ class Main(QWidget):
 
         earn_box = QGroupBox("Earnings")
         earn = QFormLayout(earn_box)
-        
+        # filled from excel file, read-only (salary is not editable in this)
         self.inputs["Monthly salary"] = spin(value=0.0)
+        self.inputs["Monthly salary"].setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
+        self.inputs["Monthly salary"].setReadOnly(True)
+        
         self.inputs["Working days"] = spin(value=31.0)
         self.inputs["Days worked"] = spin(value=31.0)
         self.inputs["Hours per day"] = spin(value=8.0)
@@ -391,7 +405,8 @@ class Main(QWidget):
                 widget.textChanged.connect(self.recalculate)
             elif isinstance(widget, QDoubleSpinBox):
                 widget.valueChanged.connect(self.recalculate)
-                
+
+        #load first employee as default
         self.employee_dropdown.currentTextChanged.connect(self.load_employee)
         if self.employee_dropdown.count() > 0:
             self.load_employee(self.employee_dropdown.currentText())
@@ -401,7 +416,10 @@ class Main(QWidget):
         scroll.setFixedWidth(430)
         scroll.setWidget(container)
         return scroll
-    
+
+    # --------------------------------------------------------
+    # Fills the form with the selected employee's data from Excel
+    # ---------------------------------------------------------
     def load_employee(self, employee_name):
         if employee_name not in employees:
             return
@@ -426,6 +444,11 @@ class Main(QWidget):
         print("Monthly salary: ", salary)
         if hasattr(self, "period_lbl"):
             self.recalculate()
+
+       # --------------------------------------------------------
+       # RIGHT SIDE: payslip preview
+       # Builds the labels only: the numbers are filled in by recalculate()
+       # --------------------------------------------------------      
 
     def build_payslip(self):
         # Put your widgets inside this layout
@@ -650,12 +673,17 @@ class Main(QWidget):
 
         self.recalculate()
         return scroll
-
+    # --------------------------------------------------------
+    # Reads every input and updates the payslip
+    # Runs automatically whenever any input changes
+    # --------------------------------------------------------
     def recalculate(self):
         if not hasattr(self, "period_lbl"):
             return
         if not hasattr(self, "inputs") or not self.inputs:
             return
+
+        
         # ============================================================
         # TEXT FIELDS
         # ============================================================
@@ -668,8 +696,6 @@ class Main(QWidget):
         self.emp_info_labels["DEPARTMENT"].setText(self.inputs["Department"].text() or "-")
         self.emp_info_labels["POSITION"].setText(self.inputs["Position"].text() or "-")
         
-
-
         # ============================================================
         # NUMERIC INPUTS
         # ============================================================
@@ -742,6 +768,7 @@ class Main(QWidget):
         self.gross_pay_lbl.setText(f"{res['gross_pay']:,.2f}")
         self.total_deductions_lbl.setText(f"{res['total_deductions']:,.2f}")
         self.net_amount_lbl.setText(f"{res['net_pay']:,.2f}")
+        
         # ============================================================
         # SAVE PAYSLIP 
         # ============================================================
