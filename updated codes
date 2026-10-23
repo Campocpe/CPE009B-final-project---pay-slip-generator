@@ -234,7 +234,7 @@ class Main(QWidget):
         #title
         self.title = QLabel("CORETECH INC.")
         font = QFont()
-        font.setFamily("HYWenHei")
+        font.setFamily("Arial")
         font.setPointSize(60)
         font.setBold(True)
         self.title.setFont(font)
@@ -243,7 +243,7 @@ class Main(QWidget):
         #start
         self.startbtn = QPushButton("OPEN EDITOR")
         self.startbtn.setToolTip("Open Template Maker")
-        self.startbtn.setFont(QFont("HYWenHei", 21, QFont.Weight.Bold))
+        self.startbtn.setFont(QFont("Arial", 21, QFont.Weight.Bold))
         self.startbtn.setFixedSize(250, 70)
         self.startbtn.clicked.connect(lambda: self.stack.setCurrentIndex(1))
 
@@ -252,7 +252,7 @@ class Main(QWidget):
         #exit
         self.exitbtn = QPushButton("EXIT")
         self.exitbtn.setToolTip("Leave Payslip Generator")
-        self.exitbtn.setFont(QFont("HYWenHei", 30, QFont.Weight.Bold))
+        self.exitbtn.setFont(QFont("Arial", 30, QFont.Weight.Bold))
         self.exitbtn.setFixedSize(250, 70)
         self.exitbtn.clicked.connect(self.quit)
 
