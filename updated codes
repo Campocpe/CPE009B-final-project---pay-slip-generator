@@ -1,12 +1,22 @@
-import sys
 import os
+import subprocess #used for installing custom packages automatically
+import sys
 
-from PyQt6.QtCore import QEasingCurve, Qt
-from PyQt6.QtGui import QColor, QFont, QPalette
+#installs custom package if not installed
+try:
+    from openpyxl import load_workbook
+except ImportError:
+    print("'requests' library not found. Installing now...")
+    subprocess.run([sys.executable, "-m", "pip", "install", "openpyxl "], check=True)
+    from openpyxl import load_workbook
+
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
     QDoubleSpinBox,
+    QFileDialog,
     QFormLayout,
     QFrame,
     QGridLayout,
@@ -14,20 +24,13 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QScrollArea,
     QStackedWidget,
     QVBoxLayout,
-    QWidget, QFileDialog,
-    QMessageBox
+    QWidget,
 )
-from openpyxl import load_workbook
-
-try:
-    from PyQt6_SwitchControl import SwitchControl
-except ImportError:
-    SwitchControl = None
-
 
 folder= os.path.dirname(os.path.abspath(__file__))
 excel_file = os.path.join(folder, "employees.xlsx")
@@ -381,7 +384,7 @@ class Main(QWidget):
         # LIVE UPDATE TRIGGERS
         # ============================================================
 
-        for key, widget in self.inputs.items():
+        for key, widget in self.inputs.values():
             if isinstance(widget, QLineEdit):
                 widget.textChanged.connect(self.recalculate)
             elif isinstance(widget, QDoubleSpinBox):
