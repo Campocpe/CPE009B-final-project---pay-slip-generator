@@ -239,7 +239,7 @@ class Main(QWidget):
         self.title.setContentsMargins(0,130,0,200)
 
         #start
-        self.startbtn = QPushButton("GENERATE")
+        self.startbtn = QPushButton("OPEN EDITOR")
         self.startbtn.setToolTip("Open Template Maker")
         self.startbtn.setFont(QFont("HYWenHei", 30, QFont.Weight.Bold))
         self.startbtn.setFixedSize(250, 70)
