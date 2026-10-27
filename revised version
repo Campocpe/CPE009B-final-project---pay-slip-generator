@@ -1,0 +1,861 @@
+import os
+import subprocess  #used for installing custom packages automatically
+import sys
+import calendar # for dates
+from datetime import datetime
+
+#installs custom package if not installed
+try:
+    from openpyxl import load_workbook
+except ImportError:
+    print("'requests' library not found. Installing now...")
+    subprocess.run([sys.executable, "-m", "pip", "install", "openpyxl "], check=True)
+    from openpyxl import load_workbook
+
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QDoubleSpinBox,
+    QFileDialog,
+    QFormLayout,
+    QFrame,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget, QSpinBox, QTabWidget
+)
+
+COMPANY_NAME = "CORETECH INC."
+COMPANY_ADDRESS = "12th Avenue, Ortigas Center, Pasig City, Metro Manila, Philippines" # dummy address
+
+HOURS_PER_DAY = 8
+WORKING_DAYS = 10         
+CUTOFFS_PER_MONTH = 2
+OT_MULTIPLIER = 1.3
+NIGHT_DIFF_RATE = 0.10
+
+MONTHS = list(calendar.month_name)[1:]
+CUTOFFS = ["1st cut-off (1-15)", "2nd cut-off (16-end)"]
+
+#loads list
+folder= os.path.dirname(os.path.abspath(__file__))
+excel_file = os.path.join(folder, "employees.xlsx")
+workbook = load_workbook(excel_file)
+sheet = workbook["Sheet1"]
+employees= {}
+
+#reads list
+for row in sheet.iter_rows(min_row=2, values_only=True):
+    if len(row) < 5:
+        continue
+    EMPLOYEE_ID, NAME, DEPARTMENT, POSITION, MONTHLY_SALARY = row[:5]
+    
+    if NAME is not None: 
+        employees[NAME]= {
+            "Employee ID": EMPLOYEE_ID,
+            "DEPARTMENT": DEPARTMENT,
+            "POSITION": POSITION,
+            "MONTHLY SALARY": MONTHLY_SALARY
+        }
+
+# ---------- Earnings ----------
+
+def daily_rate(monthly_salary, working_days):
+    """Daily rate = Monthly salary ÷ (Working days × 2 cut-offs)"""
+    return monthly_salary / (working_days * 2) if working_days else 0.0
+
+
+def basic_pay(daily_rate_value, working_days):
+    """Basic pay = Daily rate × Working days"""
+    return daily_rate_value * working_days
+
+
+def hourly_rate(daily_rate_value, hours_per_day):
+    """Hourly rate = Daily rate ÷ Hours per day"""
+    return daily_rate_value / hours_per_day if hours_per_day else 0.0
+
+
+def overtime_pay(hourly_rate_value, ot_hours, ot_multiplier):
+    """Overtime pay = Hourly rate × OT hours × OT multiplier"""
+    return hourly_rate_value * ot_hours * ot_multiplier
+
+
+def night_differential(hourly_rate_value, nd_hours, nd_rate):
+    """Night differential = Hourly rate × Night hours × ND rate"""
+    return hourly_rate_value * nd_hours * nd_rate
+
+
+def gross_pay(basic, overtime, night_diff, other_earnings=0.0):
+    """Gross pay = Basic pay + Overtime pay + Night differential"""
+    return basic + overtime + night_diff + other_earnings
+
+# ---------- Deductions ----------
+
+def sss(applicable_salary, sss_rate):
+    """SSS = Applicable salary × SSS contribution rate"""
+    return applicable_salary * sss_rate
+
+
+def philhealth(applicable_salary, philhealth_rate):
+    """PhilHealth = Applicable salary × PhilHealth contribution rate"""
+    return applicable_salary * philhealth_rate
+
+
+def pagibig(applicable_salary, pagibig_rate):
+    """Pag-IBIG = Applicable salary × Pag-IBIG contribution rate"""
+    return applicable_salary * pagibig_rate
+
+def absence_deduction(daily_rate_value, absences):
+    """Absences = Daily rate × Days absent"""
+    return daily_rate_value * absences
+
+
+def withholding_tax(taxable_compensation, tax_rate, applicable_deduction=0.0):
+    """Withholding tax = Taxable compensation × Applicable tax rate − Applicable deduction"""
+    return max(taxable_compensation * tax_rate - applicable_deduction, 0.0)
+
+
+def total_deductions(sss_amt, philhealth_amt, pagibig_amt, tax_amt, absence_amt, loans, other_deductions=0.0):
+    """Total deductions = SSS + PhilHealth + Pag-IBIG + Withholding tax + Absences + Loans + Other deductions"""
+    return sss_amt + philhealth_amt + pagibig_amt + tax_amt + absence_amt + loans + other_deductions
+
+# ---------- Final ----------
+
+def net_pay(gross, deductions):
+    """Net pay = Gross pay − Total deductions"""
+    return gross - deductions
+
+
+# ---------- Full computation ----------
+
+def compute_payslip(
+    monthly_salary,
+    working_days,
+    absences,
+    hours_per_day,
+    ot_hours=0.0,
+    ot_multiplier=1.3,
+    nd_hours=0.0,
+    nd_rate=0.10,
+    other_earnings=0.0,
+    applicable_salary=None,
+    sss_rate=0.0,
+    philhealth_rate=0.0,
+    pagibig_rate=0.0,
+    taxable_compensation=None,
+    tax_rate=0.0,
+    tax_deduction=0.0,
+    loans=0.0,
+    other_deductions=0.0,
+):
+    applicable_salary = monthly_salary if applicable_salary is None else applicable_salary
+
+    d_rate = daily_rate(monthly_salary, working_days)
+    h_rate = hourly_rate(d_rate, hours_per_day)
+
+    basic = basic_pay(d_rate, working_days)
+    ot = overtime_pay(h_rate, ot_hours, ot_multiplier)
+    nd = night_differential(h_rate, nd_hours, nd_rate)
+    gross = gross_pay(basic, ot, nd, other_earnings)
+
+    sss_amt = sss(applicable_salary, sss_rate)
+    ph_amt = philhealth(applicable_salary, philhealth_rate)
+    pi_amt = pagibig(applicable_salary, pagibig_rate)
+    abs_amt = absence_deduction(d_rate, absences)
+
+    # Default taxable compensation
+    if taxable_compensation is None:
+        taxable_compensation = gross - abs_amt - (sss_amt + ph_amt + pi_amt)
+    tax_amt = withholding_tax(taxable_compensation, tax_rate, tax_deduction)
+
+    deductions = total_deductions(sss_amt, ph_amt, pi_amt, tax_amt, abs_amt, loans, other_deductions)
+    net = net_pay(gross, deductions)
+
+    return {
+        "daily_rate": round(d_rate, 2),
+        "hourly_rate": round(h_rate, 2),
+        "basic_pay": round(basic, 2),
+        "overtime_pay": round(ot, 2),
+        "night_differential": round(nd, 2),
+        "other_earnings": round(other_earnings, 2),
+        "gross_pay": round(gross, 2),
+        "sss": round(sss_amt, 2),
+        "philhealth": round(ph_amt, 2),
+        "pagibig": round(pi_amt, 2),
+        "absences": round(abs_amt, 2),
+        "taxable_compensation": round(taxable_compensation, 2),
+        "withholding_tax": round(tax_amt, 2),
+        "loans": round(loans, 2),
+        "other_deductions": round(other_deductions, 2),
+        "total_deductions": round(deductions, 2),
+        "net_pay": round(net, 2),
+    }
+
+
+# ---------- UI helpers ----------
+
+def box():
+    frame = QFrame()
+    frame.setFrameShape(QFrame.Shape.Box)
+    return frame
+
+
+def vline():
+    line = QFrame()
+    line.setFrameShape(QFrame.Shape.VLine)
+    line.setFrameShadow(QFrame.Shadow.Plain)
+    return line
+
+
+def amount_label(text="0.00"):
+    label = QLabel(text)
+    label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+    return label
+
+
+def spin(value=0.0, maximum=10_000_000.0, suffix=""):
+    s = QDoubleSpinBox()
+    s.setRange(0, maximum)
+    s.setValue(value)
+    s.setGroupSeparatorShown(True)
+    if suffix:
+        s.setSuffix(suffix)
+    return s
+
+
+class Main(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.stack = QStackedWidget()
+        self.FrontPage()
+        self.DataPage()
+        main_layout = QVBoxLayout()
+        main_layout.addWidget(self.stack)
+        self.setLayout(main_layout)
+        self.setAutoFillBackground(True)
+        self.stack.setAutoFillBackground(True)
+
+
+    def FrontPage(self):
+        page = QWidget()
+        self.resize(1920, 1080)
+        self.setWindowTitle("CORETECH INC.")
+
+        #title
+        self.title = QLabel("CORETECH INC.")
+        font = QFont()
+        font.setFamily("Arial")
+        font.setPointSize(60)
+        font.setBold(True)
+        self.title.setFont(font)
+        self.title.setContentsMargins(0,130,0,0)
+
+        #subtitle
+        self.subtitle = QLabel("PAYSLIP GENERATOR")
+        sub_font = QFont()
+        sub_font.setFamily("Arial")
+        sub_font.setPointSize(25)
+        sub_font.setBold(True)
+        self.subtitle.setFont(sub_font)
+        self.subtitle.setContentsMargins(0, 10, 0, 200)
+
+        #start
+        self.startbtn = QPushButton("OPEN EDITOR")
+        self.startbtn.setToolTip("Open Template Maker")
+        self.startbtn.setFont(QFont("Arial", 21, QFont.Weight.Bold))
+        self.startbtn.setFixedSize(350, 100)
+        self.startbtn.clicked.connect(lambda: self.stack.setCurrentIndex(1))
+
+
+
+        #exit
+        self.exitbtn = QPushButton("EXIT")
+        self.exitbtn.setToolTip("Leave Payslip Generator")
+        self.exitbtn.setFont(QFont("Arial", 21, QFont.Weight.Bold))
+        self.exitbtn.setFixedSize(350, 100)
+        self.exitbtn.clicked.connect(self.quit)
+
+        ButtonLayout = QHBoxLayout()
+        ButtonLayout.setSpacing(10)
+        ButtonLayout.setContentsMargins(0, 0, 0, 0)
+        ButtonLayout.addWidget(self.startbtn, alignment=Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
+        ButtonLayout.addWidget(self.exitbtn, alignment=Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
+
+        MainLayout = QVBoxLayout()
+        MainLayout.setSpacing(10)  # space between every widget
+        MainLayout.setContentsMargins(0, 0, 0, 0)
+        MainLayout.addWidget(self.title, alignment=Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
+        MainLayout.addWidget(self.subtitle, alignment=Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
+        MainLayout.addLayout(ButtonLayout)
+
+
+        page.setLayout(MainLayout)
+        self.stack.addWidget(page)
+
+    def quit(self):
+        QApplication.quit()
+
+    def DataPage(self):
+        page = QWidget()
+        outer = QVBoxLayout(page)
+
+        # ============================================================
+        # INPUTS (LEFT) AND PAYSLIP (RIGHT)
+        # ============================================================
+
+        body = QHBoxLayout()
+        body.addWidget(self.build_inputs(), 0)
+        body.addWidget(self.build_payslip(), 1)
+        outer.addLayout(body, 1)
+
+
+        # ============================================================
+        # BUTTONS
+        # ============================================================
+
+        back_btn = QPushButton("Back")
+        back_btn.setFont(QFont("Arial", 18, QFont.Weight.Bold))
+        back_btn.setMinimumSize(260, 70)
+        back_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
+        save_btn = QPushButton("Save Payslip")
+        save_btn.setFont(QFont("Arial", 18, QFont.Weight.Bold))
+        save_btn.setMinimumSize(260, 70)
+        save_btn.clicked.connect(self.save_payslip)
+
+        btns = QHBoxLayout()
+        btns.addStretch()
+        btns.addWidget(back_btn)
+        btns.addWidget(save_btn)
+        btns.addStretch()
+        outer.addLayout(btns)
+
+        page.setLayout(outer)
+        self.stack.addWidget(page)
+
+    def build_inputs(self):
+        container = QWidget()
+        col = QVBoxLayout(container)
+
+        self.inputs = {}
+
+        # ============================================================
+        # EMPLOYEE INPUTS
+        # ============================================================
+        # drowpdown for employee selection
+        emp_box = QGroupBox("Employee")
+        emp = QFormLayout(emp_box)
+        
+        self.employee_dropdown= QComboBox()
+        self.employee_dropdown.addItems(employees.keys())
+        emp.addRow("Select Employee", self.employee_dropdown)
+
+        # pay period dropdowns (month, cut-off, year)
+        self.inputs["Month"] = QComboBox()
+        self.inputs["Month"].addItems(["January", "February", "March", "April", "May", "June",
+                                       "July", "August", "September", "October", "November", "December"])
+        self.inputs["Cut-off"] = QComboBox()
+        self.inputs["Cut-off"].addItems(["1-15", "16-30"])
+        self.inputs["Year"] = QComboBox()
+        self.inputs["Year"].addItems(["2026", "2027", "2028", "2029", "2030"])
+        self.inputs["Year"].setCurrentText("2026")
+
+        emp.addRow("Month", self.inputs["Month"])
+        emp.addRow("Cut-off", self.inputs["Cut-off"])
+        emp.addRow("Year", self.inputs["Year"])
+
+        # text field that automatically fills in employee information based on selection
+        for label in ["Employee no.", "Department", "Position"]:
+            field = QLineEdit()
+            field.setReadOnly(True)  # read-only flag
+            emp.addRow(label, field)
+            self.inputs[label] = field
+
+        # ============================================================
+        # EARNINGS INPUTS
+        # ============================================================
+
+        earn_box = QGroupBox("Earnings")
+        earn = QFormLayout(earn_box)
+    
+        # fixed values, read-only
+        self.inputs["Monthly salary"] = spin(value=0.0)
+        self.inputs["Monthly salary"].setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
+        self.inputs["Monthly salary"].setReadOnly(True)
+
+        self.inputs["Working days"] = spin(value=10.0)
+        self.inputs["Working days"].setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
+        self.inputs["Working days"].setReadOnly(True)
+
+        self.inputs["Hours per day"] = spin(value=8.0)
+        self.inputs["Hours per day"].setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
+        self.inputs["Hours per day"].setReadOnly(True)
+
+        self.inputs["OT multiplier"] = spin(value=1.3)
+        self.inputs["OT multiplier"].setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
+        self.inputs["OT multiplier"].setReadOnly(True)
+
+        self.inputs["OT hours"] = spin(value=0.0)
+
+        earn.addRow("Monthly salary", self.inputs["Monthly salary"])
+        earn.addRow("Working days", self.inputs["Working days"])
+        earn.addRow("Hours per day", self.inputs["Hours per day"])
+        earn.addRow("OT multiplier", self.inputs["OT multiplier"])
+        earn.addRow("OT hours", self.inputs["OT hours"])
+
+        # ============================================================
+        # NIGHT DIFFERENTIAL
+        # ============================================================
+        
+        nd_box = QGroupBox("Night Differential")
+        nd = QFormLayout(nd_box)
+        
+        self.inputs["ND rate"] = spin(value=10.0, maximum=100, suffix="%")
+        self.inputs["ND rate"].setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
+        self.inputs["ND rate"].setReadOnly(True)
+        self.inputs["ND hours"] = spin(value=0.0)
+        
+        nd.addRow("ND rate", self.inputs["ND rate"])
+        nd.addRow("Night hours (10 PM-6 AM)", self.inputs["ND hours"])
+        
+        # ============================================================
+        # DEDUCTIONS INPUTS
+        # ============================================================
+
+        ded_box = QGroupBox("Deductions")
+        ded = QFormLayout(ded_box)
+
+        self.inputs["SSS rate"] = spin(value=0.0, maximum=100, suffix=" %")
+        self.inputs["PhilHealth rate"] = spin(value=0.0, maximum=100, suffix=" %")
+        self.inputs["Pag-IBIG rate"] = spin(value=0.0, maximum=100, suffix=" %")
+        self.inputs["Tax rate"] = spin(value=0.0, maximum=100, suffix=" %")
+        self.inputs["Tax deduction"] = spin(value=0.0)
+        self.inputs["Other deductions"] = spin(value=0.0)
+        self.inputs["Absences"] = spin(value=0.0, maximum=10)
+        self.inputs["Loans"] = spin(value=0.0)
+
+        ded.addRow("SSS rate", self.inputs["SSS rate"])
+        ded.addRow("PhilHealth rate", self.inputs["PhilHealth rate"])
+        ded.addRow("Pag-IBIG rate", self.inputs["Pag-IBIG rate"])
+        ded.addRow("Tax rate", self.inputs["Tax rate"])
+        ded.addRow("Tax deduction", self.inputs["Tax deduction"])
+        ded.addRow("Other deductions", self.inputs["Other deductions"])
+        ded.addRow("Absences (days)", self.inputs["Absences"])
+        ded.addRow("Loans", self.inputs["Loans"])
+        ded.addRow("Other deductions", self.inputs["Other deductions"])
+
+        tabs = QTabWidget()
+        tabs.addTab(earn_box, "Earnings")
+        tabs.addTab(nd_box, "Night Differential")
+        tabs.addTab(ded_box, "Deductions")
+
+        col.addWidget(emp_box)
+        col.addWidget(tabs)
+        col.addStretch()
+
+        # ============================================================
+        # LIVE UPDATE TRIGGERS
+        # ============================================================
+
+        for widget in self.inputs.values():
+            if isinstance(widget, QLineEdit):
+                widget.textChanged.connect(self.recalculate)
+            elif isinstance(widget, QDoubleSpinBox):
+                widget.valueChanged.connect(self.recalculate)
+            elif isinstance(widget, QComboBox):
+                widget.currentIndexChanged.connect(self.recalculate)
+
+        #load first employee as default
+        self.employee_dropdown.currentTextChanged.connect(self.load_employee)
+        if self.employee_dropdown.count() > 0:
+            self.load_employee(self.employee_dropdown.currentText())
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFixedWidth(500)
+        scroll.setWidget(container)
+        return scroll
+
+    # --------------------------------------------------------
+    # Fills the form with the selected employee's data from Excel
+    # ---------------------------------------------------------
+    def load_employee(self, employee_name):
+        if employee_name not in employees:
+            return
+        
+        employee= employees[employee_name]
+        
+        self.inputs["Employee no."].setText(str(employee.get("Employee ID", "") or ""))
+
+        self.inputs["Department"].setText(employee.get("DEPARTMENT", "") or "")
+        self.inputs["Position"].setText(employee.get("POSITION", "") or "")
+        
+        salary= employee.get("MONTHLY SALARY")
+        
+        try:
+            salary= float(salary or 0.0)
+        except (ValueError, TypeError):
+            salary= 0.0
+            
+        self.inputs["Monthly salary"].setValue(float(salary))
+        
+        print("Selected employee: ", employee_name)
+        print("Monthly salary: ", salary)
+        if hasattr(self, "period_lbl"):
+            self.recalculate()
+
+       # --------------------------------------------------------
+       # RIGHT SIDE: payslip preview
+       # Builds the labels only: the numbers are filled in by recalculate()
+       # --------------------------------------------------------      
+
+    def build_payslip(self):
+        # Put your widgets inside this layout
+        self.payslip_widget = QWidget()
+        content_layout = QVBoxLayout(self.payslip_widget)
+        self.payslip_widget.setFont(QFont("Arial", 14))
+
+        # ============================================================
+        # HEADER
+        # ============================================================
+
+        header = box()
+
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(10, 5, 10, 5)
+
+        self.company_lbl = QLabel(COMPANY_NAME)
+        self.company_lbl.setFont(QFont("Arial", 24))
+
+        self.address_lbl = QLabel(COMPANY_ADDRESS)
+        self.address_lbl.setFont(QFont("Arial", 11))
+
+        company_layout = QVBoxLayout()
+        company_layout.setSpacing(2)
+        company_layout.addWidget(self.company_lbl)
+        company_layout.addWidget(self.address_lbl)
+
+        self.period_lbl = QLabel("JANUARY 1-15, 2026")
+        self.period_lbl.setFont(QFont("Arial", 16, QFont.Weight.Bold))
+
+        header_layout.addLayout(company_layout)
+        header_layout.addStretch()
+        header_layout.addWidget(self.period_lbl)
+
+        content_layout.addWidget(header)
+
+        # ============================================================
+        # EMPLOYEE INFORMATION
+        # ============================================================
+
+        info = box()
+
+        info_layout = QGridLayout(info)
+        info_layout.setContentsMargins(10, 5, 10, 5)
+        info_layout.setHorizontalSpacing(15)
+        info_layout.setVerticalSpacing(3)
+
+        self.emp_info_labels = {}
+
+        info_rows = [("EMPLOYEE NO.", "POSITION"),("NAME", "DEPARTMENT"),("DAILY RATE", "WORKING DAYS"),
+            ("HOURLY RATE", "ABSENCES"),
+        ]
+
+        for row, (left_name, right_name) in enumerate(info_rows):
+            info_layout.addWidget(QLabel(left_name), row, 0)
+            left_value = QLabel("-")
+            info_layout.addWidget(left_value, row, 1)
+            self.emp_info_labels[left_name] = left_value
+
+            info_layout.addWidget(QLabel(right_name), row, 3)
+            right_value = QLabel("-")
+            info_layout.addWidget(right_value, row, 4)
+            self.emp_info_labels[right_name] = right_value
+
+        info_layout.setColumnStretch(2, 1)
+
+        content_layout.addWidget(info)
+
+        # ============================================================
+        # EARNINGS / DEDUCTIONS HEADER
+        # ============================================================
+
+        section_header = box()
+
+        section_layout = QHBoxLayout(section_header)
+        section_layout.setContentsMargins(0, 0, 0, 0)
+        section_layout.setSpacing(0)
+
+        earnings_title = QLabel("EARNINGS / INCOME")
+        earnings_title.setContentsMargins(10, 5, 10, 5)
+
+        deduction_title = QLabel("DEDUCTIONS")
+        deduction_title.setContentsMargins(10, 5, 10, 5)
+
+        section_layout.addWidget(earnings_title, 1)
+        section_layout.addWidget(vline())
+        section_layout.addWidget(deduction_title, 1)
+
+        content_layout.addWidget(section_header)
+
+        # ============================================================
+        # EARNINGS AND DEDUCTIONS
+        # ============================================================
+
+        body = box()
+
+        body_layout = QHBoxLayout(body)
+        body_layout.setContentsMargins(0, 0, 0, 0)
+        body_layout.setSpacing(0)
+
+        self.earnings_map = {}
+        self.deductions_map = {}
+
+        # Earnings column
+        earnings = QWidget()
+        earnings_layout = QVBoxLayout(earnings)
+        earnings_layout.setContentsMargins(10, 8, 10, 8)
+        earnings_layout.setSpacing(5)
+
+        earnings_names = ["BASIC PAY", "OVERTIME PAY", "NIGHT DIFFERENTIAL"]
+
+        for name in earnings_names:
+            row = QHBoxLayout()
+            row.addWidget(QLabel(name))
+            row.addStretch()
+
+            amt = amount_label("0.00")
+            row.addWidget(amt)
+
+            earnings_layout.addLayout(row)
+            self.earnings_map[name] = amt
+
+        earnings_layout.addStretch()
+
+        # Deductions column
+        deductions = QWidget()
+        deductions_layout = QVBoxLayout(deductions)
+        deductions_layout.setContentsMargins(10, 8, 10, 8)
+        deductions_layout.setSpacing(5)
+
+        deduction_names = ["SSS", "PHILHEALTH", "PAG-IBIG", "WITHHOLDING TAX", "ABSENCES", "LOANS", "OTHER DEDUCTIONS"]
+
+        for name in deduction_names:
+            row = QHBoxLayout()
+            row.addWidget(QLabel(name))
+            row.addStretch()
+
+            amt = amount_label("0.00")
+            row.addWidget(amt)
+
+            deductions_layout.addLayout(row)
+            self.deductions_map[name] = amt
+
+        deductions_layout.addStretch()
+
+        # Center divider
+        body_layout.addWidget(earnings, 1)
+        body_layout.addWidget(vline())
+        body_layout.addWidget(deductions, 1)
+
+        content_layout.addWidget(body)
+
+        # ============================================================
+        # GROSS PAY AND TOTAL DEDUCTION
+        # ============================================================
+
+        totals = box()
+
+        totals_layout = QGridLayout(totals)
+        totals_layout.setContentsMargins(10, 5, 10, 5)
+
+        gross_title = QLabel("GROSS PAY")
+        self.gross_pay_lbl = amount_label("0.00")
+        total_ded_title = QLabel("TOTAL DEDUCTIONS")
+        self.total_deductions_lbl = amount_label("0.00")
+
+        totals_layout.addWidget(gross_title, 0, 0)
+        totals_layout.addWidget(self.gross_pay_lbl, 0, 1)
+        totals_layout.addWidget(total_ded_title, 0, 2)
+        totals_layout.addWidget(self.total_deductions_lbl, 0, 3)
+
+        totals_layout.setColumnStretch(0, 1)
+        totals_layout.setColumnStretch(2, 1)
+
+        content_layout.addWidget(totals)
+
+        # ============================================================
+        # NET PAY
+        # ============================================================
+
+        net = box()
+
+        net_layout = QHBoxLayout(net)
+        net_layout.setContentsMargins(10, 5, 10, 5)
+
+        net_title = QLabel("NET PAY")
+        self.net_amount_lbl = amount_label("0.00")
+
+        net_title.setFont(QFont("Arial", 18, QFont.Weight.Bold))
+        self.net_amount_lbl.setFont(QFont("Arial", 18, QFont.Weight.Bold))
+
+        net_layout.addWidget(net_title)
+        net_layout.addStretch()
+        net_layout.addWidget(self.net_amount_lbl)
+
+        content_layout.addWidget(net)
+
+        # ============================================================
+        # APPROVAL SIGNATURES
+        # ============================================================
+
+        signatures = QHBoxLayout()
+        signatures.setContentsMargins(20, 25, 20, 10)
+
+        signatures.addWidget(QLabel("APPROVED BY :"))
+        signatures.addStretch()
+        signatures.addWidget(QLabel("RECEIVED BY :"))
+
+        content_layout.addLayout(signatures)
+
+        # Give the QWidget to the QScrollArea
+        content_layout.addStretch()
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setMinimumSize(600, 300)
+        scroll.setWidget(self.payslip_widget)
+
+        self.recalculate()
+        return scroll
+    
+    # --------------------------------------------------------
+    # Reads every input and updates the payslip
+    # Runs automatically whenever any input changes
+    # --------------------------------------------------------
+    def recalculate(self):
+        if not hasattr(self, "period_lbl"):
+            return
+        if not hasattr(self, "inputs") or not self.inputs:
+            return
+        
+        # ============================================================
+        # TEXT FIELDS
+        # ============================================================
+
+        month = self.inputs["Month"].currentText()
+        cutoff = self.inputs["Cut-off"].currentText()
+        year = self.inputs["Year"].currentText()
+        self.period_lbl.setText(f" {month.upper()} {cutoff}, {year}")
+
+        self.emp_info_labels["EMPLOYEE NO."].setText(self.inputs["Employee no."].text() or "-")
+        self.emp_info_labels["NAME"].setText(self.employee_dropdown.currentText() or "-")
+        self.emp_info_labels["DEPARTMENT"].setText(self.inputs["Department"].text() or "-")
+        self.emp_info_labels["POSITION"].setText(self.inputs["Position"].text() or "-")
+        
+        # ============================================================
+        # NUMERIC INPUTS
+        # ============================================================
+
+        monthly_salary = self.inputs["Monthly salary"].value()
+        working_days = self.inputs["Working days"].value()
+        absences = self.inputs["Absences"].value()
+        hours_per_day = self.inputs["Hours per day"].value()
+        ot_hours = self.inputs["OT hours"].value()
+        ot_multiplier = self.inputs["OT multiplier"].value()
+        nd_hours = self.inputs["ND hours"].value()
+        nd_rate = self.inputs["ND rate"].value() /100.0
+
+        other_earnings = 0.0
+
+        sss_rate = self.inputs["SSS rate"].value() / 100.0
+        philhealth_rate = self.inputs["PhilHealth rate"].value() / 100.0
+        pagibig_rate = self.inputs["Pag-IBIG rate"].value() / 100.0
+        tax_rate = self.inputs["Tax rate"].value() / 100.0
+        tax_deduction = self.inputs["Tax deduction"].value()
+        loans = self.inputs["Loans"].value()
+        other_deductions = self.inputs["Other deductions"].value()
+
+        # ============================================================
+        # COMPUTATION
+        # ============================================================
+
+        res = compute_payslip(
+            monthly_salary=monthly_salary,
+            working_days=working_days,
+            absences=absences,
+            hours_per_day=hours_per_day,
+            ot_hours=ot_hours,
+            ot_multiplier=ot_multiplier,
+            nd_hours=nd_hours,
+            nd_rate=nd_rate,
+            other_earnings=other_earnings,
+            sss_rate=sss_rate,
+            philhealth_rate=philhealth_rate,
+            pagibig_rate=pagibig_rate,
+            tax_rate=tax_rate,
+            tax_deduction=tax_deduction,
+            loans=loans,
+            other_deductions=other_deductions,
+        )
+
+        # ============================================================
+        # UPDATE PAYSLIP PREVIEW
+        # ============================================================
+
+        self.emp_info_labels["DAILY RATE"].setText(f"{res['daily_rate']:,.2f}")
+        self.emp_info_labels["HOURLY RATE"].setText(f"{res['hourly_rate']:,.2f}")
+        self.emp_info_labels["WORKING DAYS"].setText(f"{working_days:,.2f}")
+        self.emp_info_labels["ABSENCES"].setText(f"{absences:,.2f}")
+
+        self.earnings_map["BASIC PAY"].setText(f"{res['basic_pay']:,.2f}")
+        self.earnings_map["OVERTIME PAY"].setText(f"{res['overtime_pay']:,.2f}")
+        self.earnings_map["NIGHT DIFFERENTIAL"].setText(f"{res['night_differential']:,.2f}")
+
+        self.deductions_map["SSS"].setText(f"{res['sss']:,.2f}")
+        self.deductions_map["PHILHEALTH"].setText(f"{res['philhealth']:,.2f}")
+        self.deductions_map["PAG-IBIG"].setText(f"{res['pagibig']:,.2f}")
+        self.deductions_map["WITHHOLDING TAX"].setText(f"{res['withholding_tax']:,.2f}")
+        self.deductions_map["OTHER DEDUCTIONS"].setText(f"{res['other_deductions']:,.2f}")
+        self.deductions_map["ABSENCES"].setText(f"{res['absences']:,.2f}")
+        self.deductions_map["LOANS"].setText(f"{res['loans']:,.2f}")
+
+        self.gross_pay_lbl.setText(f"{res['gross_pay']:,.2f}")
+        self.total_deductions_lbl.setText(f"{res['total_deductions']:,.2f}")
+        self.net_amount_lbl.setText(f"{res['net_pay']:,.2f}")
+        
+        # ============================================================
+        # SAVE PAYSLIP 
+        # ============================================================
+    def save_payslip(self):
+        if not hasattr(self, "payslip_widget") or self.payslip_widget is None:
+            return
+
+        file_path, _ = QFileDialog.getSaveFileName(self,"Save Payslip","payslip.png",
+            "PNG Image (*.png);;JPEG Image (*.jpg *.jpeg)",)
+        if not file_path:
+            return
+
+        pixmap = self.payslip_widget.grab()
+        if pixmap.save(file_path):
+            QMessageBox.information(self, "Success", f"Payslip successfully saved to:\n{file_path}")
+        else:
+            QMessageBox.critical(self, "Error", "Failed to save payslip image file.")
+
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    app.setStyle("Fusion")
+    app.setFont(QFont("Arial", 13))
+
+    form = Main()
+    form.showMaximized()
+    sys.exit(app.exec())
