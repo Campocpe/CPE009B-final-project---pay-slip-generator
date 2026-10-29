@@ -1,7 +1,7 @@
+import calendar  # for dates
 import os
 import subprocess  #used for installing custom packages automatically
 import sys
-import calendar # for dates
 from datetime import datetime
 
 #installs custom package if not installed
@@ -9,10 +9,17 @@ try:
     from openpyxl import load_workbook
 except ImportError:
     print("'requests' library not found. Installing now...")
-    subprocess.run([sys.executable, "-m", "pip", "install", "openpyxl "], check=True)
+    subprocess.run([sys.executable, "-m", "pip", "install", "openpyxl"], check=True)
     from openpyxl import load_workbook
 
-from PyQt6.QtCore import Qt
+try:
+    from PyQt6.QtCore import Qt
+except ImportError:
+    print("'requests' library not found. Installing now...")
+    subprocess.run([sys.executable, "-m", "pip", "install", "PyQt6"], check=True)
+    from PyQt6.QtCore import Qt
+
+
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QApplication,
@@ -30,8 +37,9 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QStackedWidget,
+    QTabWidget,
     QVBoxLayout,
-    QWidget, QSpinBox, QTabWidget
+    QWidget,
 )
 
 COMPANY_NAME = "CORETECH INC."
