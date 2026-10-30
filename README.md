@@ -44,7 +44,7 @@
 Payslip Generator is a desktop application built with Python and PyQt6. It lets a user enter an employee’s details, salary information and deduction rates, and shows a formatted payslip that updates as they type. The payslip layout follows a standard template: company header, employee information, an earnings and deductions section, totals, net pay and signature lines.
 
 ## 🚀 Features
-- 🟡 Front page with Generate and Exit buttons.
+- 🟡 Front page with Edit and Exit buttons.
 - 🔵 Live payslip preview
 - 🟣 Scrollable layout
 - 🟢 Save Payslip button
