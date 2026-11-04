@@ -44,12 +44,12 @@
 A desktop-based payroll application developed using Python and PyQt6 that automates semi-monthly payslip generation using employee records from Excel. It allows users to select employees, set pay periods, and enter payroll details such as overtime, night differential, and deductions. The application automatically calculates earnings, contributions, taxes, and net pay while displaying a live payslip preview. Completed payslips can be saved as PNG images for storage, printing, or distribution.
 
 ## 👍Project Objectives
-To develop a functional payslip generator application using Python and PyQt6.
-To apply Object-Oriented Programming concepts in building the application interface.
-To provide a simple interface for generating and previewing employee payslips.
-To load employee records from an Excel file using openpyxl.
-To display a live payslip preview that updates automatically as inputs change.
-To export the finished payslip as a PNG image using file handling.
+- To develop a functional payslip generator application using Python and PyQt6.
+- To apply Object-Oriented Programming concepts in building the application interface.
+- To provide a simple interface for generating and previewing employee payslips.
+- To load employee records from an Excel file using openpyxl.
+- To display a live payslip preview that updates automatically as inputs change.
+- To export the finished payslip as a PNG image using file handling.
 
 ## 🚀 Features
 - 🟡 Imports employee information from an Excel file.
