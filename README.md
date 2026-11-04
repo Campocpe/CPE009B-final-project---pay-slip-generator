@@ -41,16 +41,29 @@
 
 ## 💡**THE PROJECT**
 
-Payslip Generator is a desktop application built with Python and PyQt6. It lets a user enter an employee’s details, salary information and deduction rates, and shows a formatted payslip that updates as they type. The payslip layout follows a standard template: company header, employee information, an earnings and deductions section, totals, net pay and signature lines.
+A desktop-based payroll application developed using Python and PyQt6 that automates semi-monthly payslip generation using employee records from Excel. It allows users to select employees, set pay periods, and enter payroll details such as overtime, night differential, and deductions. The application automatically calculates earnings, contributions, taxes, and net pay while displaying a live payslip preview. Completed payslips can be saved as PNG images for storage, printing, or distribution.
+
+## 👍Project Objectives
+To develop a functional payslip generator application using Python and PyQt6.
+To apply Object-Oriented Programming concepts in building the application interface.
+To provide a simple interface for generating and previewing employee payslips.
+To load employee records from an Excel file using openpyxl.
+To display a live payslip preview that updates automatically as inputs change.
+To export the finished payslip as a PNG image using file handling.
 
 ## 🚀 Features
-- 🟡 Front page with Edit and Exit buttons.
-- 🔵 Live payslip preview
-- 🟣 Scrollable layout
-- 🟢 Save Payslip button
+- 🟡 Imports employee information from an Excel file.
+- 🔵 Allows employee selection through a dropdown menu.
+- 🟣 Automatically displays employee details and salary.
+- 🟢 Allows selection of month, year, and cut-off period.
+- 🟡 Accepts inputs for overtime, night differential, absences, and loans.
+- 🔵 Automatically calculates earnings, contributions, taxes, and deductions.
+- 🟣 Displays a live payslip preview that updates with every change.
+- 🟢 Calculates gross pay, total deductions, and net pay.
+- 🟡 Allows users to save payslips as PNG images.
 ---
 
-## 👍ACKNOWLEDGEMENT
+## ACKNOWLEDGEMENT
 Developed as part of our Object-Oriented Programming course Final Project
 
   ![quote](https://i.imgur.com/abc123.gif)<p align="center">
